@@ -5,7 +5,7 @@ use std::net::{TcpListener, TcpStream};
 use std::os::unix::io::{AsRawFd, RawFd};
 
 ///epoll 全称 eventpoll，是 linux 内核实现IO多路复用（IO multiplexing）的一个实现。IO多路复用的意思是在一个操作里同时监听多个输入输出源，在其中一个或多个输入输出源可用的时候返回，然后对其的进行读写操作。
-///epoll_ctl: 将监听的文件描述符添加到epoll实例中，实例代码为将标准输入文件描述符添加到epoll中
+///epoll_ctl: 将监听的文件描述符添加到epoll实例中，将标准输入文件描述符添加到epoll中
 ///EPOLL_CTL_ADD：注册新的fd到epfd中；
 ///EPOLL_CTL_MOD：修改已经注册的fd的监听事件；
 ///EPOLL_CTL_DEL：从epfd中删除一个fd；
@@ -111,13 +111,15 @@ fn main() -> io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:8000")?;
     listener.set_nonblocking(true)?;
     let listener_fd = listener.as_raw_fd();
-//创建一个epoll实例，文件描述符
+//epoll_create创建一个epoll对象epfd
     let epoll_fd = epoll_create().expect("can create epoll queue");
+    //epoll_ctl将需要监视的socket添加到epfd
     add_interest(epoll_fd, listener_fd, listener_read_event(key))?;
 
     loop {
         println!("requests in flight: {}", request_contexts.len());
         events.clear();
+        //epoll_wait等待数据
         let res = match syscall!(epoll_wait(
             epoll_fd,
             events.as_mut_ptr() as *mut libc::epoll_event,
